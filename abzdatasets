@@ -1,0 +1,26 @@
+#!/usr/bin/env python
+
+# script to create and submit datasets in acousticbrainz server
+
+# to cover differnt dataset types add option to this script
+# default behaviour dataset structure as explained in GSoC proposal
+
+
+from __future__ import print_function
+import sys
+from abz import acousticbrainz
+
+def main(path):
+    acousticbrainz.generate_dataset(path)
+    
+if __name__ == '__main__':
+    if len(sys.argv) < 2:
+        print("Usage: abzdatasets [dataset_root_path]", file=sys.stderr)
+        sys.exit(1)
+    
+    try:
+        main(sys.argv[1])
+    except KeyboardInterrupt:
+        # clean temporary files ad resources
+        raise
+

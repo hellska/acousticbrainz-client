@@ -164,3 +164,61 @@ def process(path):
 def cleanup():
     if os.path.isfile(config.settings["profile_file"]):
         os.unlink(config.settings["profile_file"])
+        
+def generate_dataset(path):
+    """Process a direcotry containing a datase
+    
+    Args:
+        path: the relative or absolute path of the dataser rootdir
+    """
+    if not os.path.exists(path):
+        sys.exit(path + " does not exists!")
+    if not os.path.isdir(path):
+        sys.exit(path + " is not a directory!")
+    scan_dir(os.path.abspath(path))
+    
+def scan_dir(path):
+    """Scan a directory to create the dataset dictionary basic structure
+    
+    Args:
+        path: the absolute path of the dataser rootdir
+    Returns:
+        datasetdict: a dictionary with the basic structure of the dataset
+    """
+
+    dataset_name = os.path.basename(os.path.normpath(path))
+    # handles the basic dataset dictionary structure
+    datasetdict = _datasetdict_structure(dataset_name)
+    
+    for dirName, sudDirNames, fileNames in os.walk(path):
+        
+        for subdir in sudDirNames:
+
+            tmpdict = {}
+            tmpdict['name'] = subdir
+            datasetdict['classes'].append(tmpdict)
+    
+    print(datasetdict)
+    # scan each subfolder in the dataset root
+    for i in datasetdict['classes']:
+        subdir = os.path.join(path, i['name'])
+        print(subdir)
+        
+        #print(os.path.join(path, subdir))
+        for dirName, subDirNames, fileNames in os.walk(subdir):
+            ### run the extractor
+            for fileName in fileNames:
+                filepath = os.path.join(subdir, fileName)
+                tmpname = tempfile.mkstemp(suffix='.json')
+                print(filepath, tmpname)
+                #retcode, out = run_extractor(filepath, tmpname)
+                ### submit the data to check for md5 in acousticbrainz project
+
+
+def _datasetdict_structure(dataset_name):
+    datasetdict = {}
+    datasetdict['name'] = dataset_name
+    datasetdict['description'] = ''
+    datasetdict['public'] = 'true'
+    datasetdict['classes'] = []
+    return datasetdict
