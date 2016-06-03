@@ -202,18 +202,45 @@ def scan_dir(path):
     # scan each subfolder in the dataset root
     for i in datasetdict['classes']:
         subdir = os.path.join(path, i['name'])
-        print(subdir)
         
-        #print(os.path.join(path, subdir))
         for dirName, subDirNames, fileNames in os.walk(subdir):
             ### run the extractor
             for fileName in fileNames:
-                filepath = os.path.join(subdir, fileName)
-                tmpname = tempfile.mkstemp(suffix='.json')
-                print(filepath, tmpname)
-                #retcode, out = run_extractor(filepath, tmpname)
-                ### submit the data to check for md5 in acousticbrainz project
+                # run the extractor
+                extractor_output = _dataset_item_extractor(subdir, fileName)
+                print(extractor_output)
+                # submit dataset item (md5 check)
+                os.unlink(extractor_output)
+                
+def _dataset_item_extractor(subdir, fileName):
 
+    filepath = os.path.join(subdir, fileName)
+    fd, tmpname = tempfile.mkstemp(suffix='.json')
+    os.close(fd)
+    os.unlink(tmpname)
+    # avoid using default config file for datasets items MBID is not required
+    config.settings["profile_file"] = ""
+    try:
+        retcode, out = run_extractor(filepath, tmpname)
+        if retcode == 1:
+            _update_progress(filepath, ":( extract", RED)
+            print()
+            print(out)
+            add_to_filelist(filepath, "extractor")
+        elif retcode < 0 or retcode > 0:
+            _update_progress(filepath, ":( unknown error", RED)
+            print()
+            print(out)
+        else:
+            if os.path.isfile(tmpname):
+                return tmpname
+            else:
+                return None
+    except KeyboardInterrupt:
+        print()
+        print("Action interrupted by the user!")
+        print("Stopped while extracting data from file:", filepath)
+        sys.exit(1)
 
 def _datasetdict_structure(dataset_name):
     datasetdict = {}
