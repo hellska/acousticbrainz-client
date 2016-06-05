@@ -207,14 +207,17 @@ def scan_dir(path):
             ### run the extractor
             for fileName in fileNames:
                 # run the extractor
-                extractor_output = _dataset_item_extractor(subdir, fileName)
+                filepath = os.path.join(subdir, fileName)
+                extractor_output = _dataset_item_extractor(filepath)
                 print(extractor_output)
                 # submit dataset item (md5 check)
+                itemuuid = submit_dataset_item(extractor_output)
+                print(str(itemuuid))
+                
                 os.unlink(extractor_output)
                 
-def _dataset_item_extractor(subdir, fileName):
+def _dataset_item_extractor(filepath):
 
-    filepath = os.path.join(subdir, fileName)
     fd, tmpname = tempfile.mkstemp(suffix='.json')
     os.close(fd)
     os.unlink(tmpname)
@@ -249,3 +252,27 @@ def _datasetdict_structure(dataset_name):
     datasetdict['public'] = 'true'
     datasetdict['classes'] = []
     return datasetdict
+
+def submit_dataset_item(filepath):
+    with open(filepath) as jsonfile:
+        try:
+            jsondata = json.load(jsonfile)
+        except (TypeError, ValueError):
+            print("errore")
+            return None
+    
+    host = config.settings["host"]
+    url = compat.urlunparse(('http', host, '/datasetitem/', '', '',''))
+    print('request:', filepath)
+    #try:
+    #    r = requests.post(url, data=jsondata)
+    #    itemuuid = json.loads(r.json)
+    #    return itemuuid
+    #except requests.exceptions.HTTPError as e:
+    #    print()
+    #    print(e.response.text)
+    #    _update_progress(filepath, ":( HTTP Error", RED)
+    #    return None
+    test_response = { 'itemuuid': '23456' }
+    return test_response
+    
