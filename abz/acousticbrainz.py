@@ -218,9 +218,6 @@ def scan_dir(path):
                         tmpdict['recordings'].append(str(itemuuid))
                         _update_progress(filepath, ":) Get UUID", GREEN)
                         print()
-                    else:
-                        _update_progress(filepath, ":( No UUID", RED)
-                        print()
                     
                     os.unlink(extractor_output)
                     
@@ -292,7 +289,6 @@ def submit_dataset_item(filepath):
         try:
             jsondata = json.load(jsonfile)
         except (TypeError, ValueError):
-            print()
             print("Unknown Extractor Error")
             _update_progress(filepath, ":( json format", RED)
             return None
@@ -307,8 +303,7 @@ def submit_dataset_item(filepath):
             return itemuuid
         else:
             print()
-            print(r.status_code)
-            _update_progress(filepath, ":( NoUUID", RED)
+            _update_progress("HTTP status code "+str(r.status_code), ":( NoUUID", RED)
             # comment this to test with fake uuids
             return None
     except requests.exceptions.HTTPError as e:
@@ -329,12 +324,25 @@ def submit_dataset(datasetdict):
     datasettxt = json.dumps(datasetdict)
 
     host = config.settings["host"]
-    url = compat.urlunparse(('http', host, '/datasets/', '', '', ''))
+    url = compat.urlunparse(('http', host, '/api/v1/datasets', '', '', ''))
     try:
         r = requests.post(url, data=datasettxt)
-        print(r.status_code)
-    except requests.exceptions.HTTPError as e:
+        resp = r.json()
+        print(r.status_code,'-' , resp)
+        _update_progress('dataset submission complete', ':) Dataset', GREEN)
         print()
+    except requests.exceptions.HTTPError as e:
         print(e.response.text)
-        _update_progress('dataset submission problem', ':( submission', RED)
+        _update_progress('dataset submission problem', ':( Dataset', RED)
+        print()
     
+def submit_dataset_file(datasetfile):
+    with open(datasetfile) as jsonfile:
+        try:
+            jsondata = json.load(jsonfile)
+        except (TypeError, ValueError):
+            print()
+            print("Error Reading Datasetfile")
+            _update_progress(datasetfile, ":( json format", RED)
+            return None
+        submit_dataset(jsondata)

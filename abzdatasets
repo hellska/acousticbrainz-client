@@ -5,24 +5,32 @@
 # to cover differnt dataset types add option to this script
 # default behaviour dataset structure as explained in GSoC proposal
 
-
 from __future__ import print_function
 import sys
 from abz import acousticbrainz
 
-def main(path):
-    acousticbrainz.generate_dataset(path)
+def main(path,datasetfile=''):
+        if datasetfile == '':
+            acousticbrainz.generate_dataset(path)
+        else:
+            acousticbrainz.submit_dataset_file(datasetfile)
+        
     
 if __name__ == '__main__':
     if len(sys.argv) < 2:
         print("Usage: abzdatasets [dataset_root_path]", file=sys.stderr)
         sys.exit(1)
-    
+    elif len(sys.argv) == 3:
+        datasetfile = sys.argv[2]
+    else:
+        datasetfile = ''
+    path = sys.argv[1]
     try:
-        main(sys.argv[1])
+            main(path,datasetfile)
     except KeyboardInterrupt:
         # clean temporary files ad resources
         print()
         print("Action interrupted by the user!")
         acousticbrainz.cleanup()
         raise
+    
