@@ -2,19 +2,18 @@
 
 # script to create and submit datasets in acousticbrainz server
 
-# to cover differnt dataset types add option to this script
+# to cover different dataset types add option to this script
 # default behaviour dataset structure as explained in GSoC proposal
 
 from __future__ import print_function
 import sys
 from abz import acousticbrainz
 
-def main(path,datasetfile=''):
-        if datasetfile == '':
-            acousticbrainz.generate_dataset(path)
-        else:
-            acousticbrainz.submit_dataset_file(datasetfile)
-        
+def main(path, datasetfile=''):
+    if datasetfile == '':
+        acousticbrainz.generate_dataset(path)
+    else:
+        acousticbrainz.submit_dataset_file(datasetfile)    
     
 if __name__ == '__main__':
     if len(sys.argv) < 2:
@@ -26,7 +25,7 @@ if __name__ == '__main__':
         datasetfile = ''
     path = sys.argv[1]
     try:
-            main(path,datasetfile)
+        main(path, datasetfile)
     except KeyboardInterrupt:
         # clean temporary files ad resources
         print()

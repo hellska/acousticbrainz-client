@@ -51,19 +51,22 @@ def migrate_old_settings(dbfile):
         os.unlink(PROCESSED_FILE_LIST)
 
 
-def _create_profile_file(essentia_build_sha):
+def _create_profile_file(essentia_build_sha, profile):
     """ A profile file contains options to the extractor, and
         optionally additional data to add to the resulting output.
         It's yaml, but we're going to write it manually so that
         we don't need to depend on libyaml
     """
-    template = """requireMbid: true
+    template = """requireMbid: %s
 indent: 0
 mergeValues:
     metadata:
         version:
             essentia_build_sha: %s"""
-    profile = template % essentia_build_sha
+    if profile=='recordings':
+        profile = template % ('true', essentia_build_sha)
+    elif profile=='datasets':
+        profile = template % ('false', essentia_build_sha)
     fd, tmpname = tempfile.mkstemp(suffix='.yaml')
     fp = os.fdopen(fd, "w")
     fp.write(profile)
@@ -117,7 +120,8 @@ def load_settings():
     settings["essentia_path"] = essentia_path
     settings["essentia_build_sha"] = h.hexdigest()
 
-    settings["profile_file"] = _create_profile_file(settings["essentia_build_sha"])
+    settings["profile_file_recordings"] = _create_profile_file(settings["essentia_build_sha"], 'recordings')
+    settings["profile_file_datasets"] = _create_profile_file(settings["essentia_build_sha"], 'datasets')
 
     extensions = config.get("acousticbrainz", "extensions")
     extensions = [".%s" % e.lower() for e in extensions.split()]

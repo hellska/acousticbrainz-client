@@ -68,15 +68,19 @@ def is_processed(filepath):
         return False
 
 
-def run_extractor(input_path, output_path):
+def run_extractor(input_path, output_path, profile):
     extractor = config.settings["essentia_path"]
-    profile = config.settings["profile_file"]
+    if profile=='datasets':
+        profile = config.settings["profile_file_datasets"]
+    elif profile=='recordings':
+        profile = config.settings["profile_file_recordings"]
     args = [extractor, input_path, output_path, profile]
 
     p = subprocess.Popen(args, stderr=subprocess.STDOUT, stdout=subprocess.PIPE)
     (out, err) = p.communicate()
     retcode = p.returncode
     return retcode, out
+
 
 
 def submit_features(recordingid, features):
@@ -97,7 +101,7 @@ def process_file(filepath):
     fd, tmpname = tempfile.mkstemp(suffix='.json')
     os.close(fd)
     os.unlink(tmpname)
-    retcode, out = run_extractor(filepath, tmpname)
+    retcode, out = run_extractor(filepath, tmpname, 'recordings')
     if retcode == 2:
         _update_progress(filepath, ":( nombid", RED)
         print()
@@ -176,9 +180,12 @@ def generate_dataset(path):
     if not os.path.isdir(path):
         sys.exit(path + " is not a directory!")
     datasetdict = scan_dir(os.path.abspath(path))
-    print(datasetdict)
     # submit dataset using the Dataset API
-    submit_dataset(datasetdict)
+    if len(datasetdict['classes'])>0:
+        submit_dataset(datasetdict)
+    else:
+        _update_progress(path, ":( empty classes", RED)
+        print()
     
 def scan_dir(path):
     """Scan a directory to create the dataset dictionary basic structure
@@ -196,33 +203,35 @@ def scan_dir(path):
     
     for dirName, sudDirNames, fileNames in os.walk(path):
         
-        for subdir in sudDirNames:
-            tmpdict = {}
-            tmpdict['name'] = subdir
-            tmpdict['description'] = ''
-            tmpdict['recordings'] = []
+        if dirName != path:
+            subdir = os.path.basename(dirName)
+            tmpdict = { "name": subdir,
+                        "description": "",
+                        "recordings": []
+                    }
 
             # scan each subfolder in the dataset root
-            subdir = os.path.join(path, subdir)
     
-            for dirName, subDirNames, fileNames in os.walk(subdir):
-                ### run the extractor
-                for fileName in fileNames:
-                    # run the extractor
-                    filepath = os.path.join(subdir, fileName)
-                    extractor_output = _dataset_item_extractor(filepath)
+            ### run the extractor
+            for fileName in fileNames:
+                # run the extractor
+                filepath = os.path.join(dirName, fileName)
+                extractor_output = _dataset_item_extractor(filepath)
+                if extractor_output is not None:
                     # submit dataset item (md5 check)
                     itemuuid = submit_dataset_item(extractor_output)
-                    if not itemuuid==None:
+                    #itemuuid = "23456"
+                    if itemuuid is not None:
                         itemuuid = itemuuid['itemuuid']
+                        #itemuuid = "23456"
                         tmpdict['recordings'].append(str(itemuuid))
                         _update_progress(filepath, ":) Get UUID", GREEN)
                         print()
-                    
+                        ### remove the extractor ouput
                     os.unlink(extractor_output)
-                    
-                if len(tmpdict['recordings'])>0:
-                    datasetdict['classes'].append(tmpdict)
+                        
+            if len(tmpdict['recordings'])>0:
+                datasetdict['classes'].append(tmpdict)
     
     #print(datasetdict)
     return datasetdict
@@ -238,24 +247,26 @@ def _dataset_item_extractor(filepath):
     fd, tmpname = tempfile.mkstemp(suffix='.json')
     os.close(fd)
     os.unlink(tmpname)
-    # avoid using default config file for datasets items MBID is not required
-    config.settings["profile_file"] = ""
     try:
-        retcode, out = run_extractor(filepath, tmpname)
+        retcode, out = run_extractor(filepath, tmpname, 'datasets')
         if retcode == 1:
             print()
             print(out)            
             _update_progress(filepath, ":( extract", RED)
             add_to_filelist(filepath, "extractor")
+            return None
         elif retcode < 0 or retcode > 0:
             print()
             print(out)
             _update_progress(filepath, ":( unknown error", RED)
+            return None
         else:
             if os.path.isfile(tmpname):
                 return tmpname
             else:
                 return None
+                _update_progress(filepath, ":( No Extractor File")
+                print()
     except KeyboardInterrupt:
         print()
         print("Action interrupted by the user!")
@@ -270,11 +281,10 @@ def _datasetdict_structure(dataset_name):
     Returns:
         datasetdict:    a dictionar ywith the dataset structure
     """
-    datasetdict = {}
-    datasetdict['name'] = dataset_name
-    datasetdict['description'] = ''
-    datasetdict['public'] = 'true'
-    datasetdict['classes'] = []
+    datasetdict = { "name": dataset_name,
+                    "description": "",
+                    "public": "true",
+                    "classes": []}
     return datasetdict
 
 def submit_dataset_item(filepath):
@@ -304,16 +314,12 @@ def submit_dataset_item(filepath):
         else:
             print()
             _update_progress("HTTP status code "+str(r.status_code), ":( NoUUID", RED)
-            # comment this to test with fake uuids
             return None
     except requests.exceptions.HTTPError as e:
         print()
         print(e.response.text)
         _update_progress(filepath, ":( HTTP Error", RED)
         return None
-    # send fake uuid
-    #test_response = { 'itemuuid': '23456' }
-    #return test_response
 
 def submit_dataset(datasetdict):
     """Send the dataset dictionary to the server through the Dataset API
