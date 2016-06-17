@@ -303,13 +303,15 @@ def submit_dataset_item(filepath):
             _update_progress(filepath, ":( json format", RED)
             return None
     
+    jsonjson = json.dumps(jsondata)
+    
     host = config.settings["host"]
     # This is a fake endpoints to be defined
-    url = compat.urlunparse(('http', host, '/datasetitem/', '', '',''))
+    url = compat.urlunparse(('http', host, '/api/v1/low-level', '', '',''))
     try:
-        r = requests.post(url, data=jsondata)
+        r = requests.post(url, data=jsonjson)
         if r.status_code==200:
-            itemuuid = json.loads(r.json)
+            itemuuid = r.json()
             return itemuuid
         else:
             print()
@@ -327,12 +329,13 @@ def submit_dataset(datasetdict):
     Args:
         datasetdict:    A dataset dictionary as defined in the API doc
     """
+    # TODO implement the Oauth for this task
     datasettxt = json.dumps(datasetdict)
 
     host = config.settings["host"]
-    url = compat.urlunparse(('http', host, '/api/v1/datasets', '', '', ''))
+    url = compat.urlunparse(('http', host, '/api/v1/datasets/', '', '', ''))
     try:
-        r = requests.post(url, data=datasettxt)
+        r = requests.post(url, headers={'Content-Type': 'application/json'}, data=datasettxt)
         resp = r.json()
         print(r.status_code,'-' , resp)
         _update_progress('dataset submission complete', ':) Dataset', GREEN)
